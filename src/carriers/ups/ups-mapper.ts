@@ -8,9 +8,6 @@ import {
   SERVICE_LEVEL_TO_UPS_CODE,
 } from './ups-types';
 
-/**
- * Transform our domain Address to UPS Address format
- */
 export function mapAddressToUPS(address: Address): UPSAddress {
   const addressLines: string[] = [address.street1];
   if (address.street2) {
@@ -27,13 +24,10 @@ export function mapAddressToUPS(address: Address): UPSAddress {
   };
 }
 
-/**
- * Transform our domain Package to UPS Package format
- */
 export function mapPackageToUPS(pkg: Package): UPSPackage {
   return {
     PackagingType: {
-      Code: '02', // Customer supplied package
+      Code: '02', // UPS code for "Customer Supplied Package"
       Description: 'Package',
     },
     Dimensions: {
@@ -61,9 +55,6 @@ export function mapPackageToUPS(pkg: Package): UPSPackage {
   };
 }
 
-/**
- * Transform our domain RateRequest to UPS RateRequest payload
- */
 export function mapRateRequestToUPS(
   request: RateRequest,
   accountNumber: string
@@ -77,6 +68,7 @@ export function mapRateRequestToUPS(
       },
       Shipment: {
         ShipmentRatingOptions: {
+          // Request account-specific discounted rates when available
           NegotiatedRatesIndicator: '1',
         },
         Shipper: {
@@ -104,11 +96,8 @@ export function mapRateRequestToUPS(
   };
 }
 
-/**
- * Transform UPS RatedShipment to our domain RateQuote
- */
 export function mapUPSRatedShipmentToQuote(ratedShipment: UPSRatedShipment): RateQuote {
-  // Prefer negotiated rates if available
+  // Prefer negotiated rates (account-specific discounts) over published rates
   const totalCharge =
     ratedShipment.NegotiatedRateCharges?.TotalCharge.MonetaryValue ||
     ratedShipment.TotalCharges.MonetaryValue;
@@ -117,18 +106,16 @@ export function mapUPSRatedShipmentToQuote(ratedShipment: UPSRatedShipment): Rat
     ratedShipment.NegotiatedRateCharges?.TotalCharge.CurrencyCode ||
     ratedShipment.TotalCharges.CurrencyCode;
 
-  // Map UPS service code to our service level
   const serviceCode = ratedShipment.Service.Code;
   const serviceLevel = (UPS_SERVICE_CODES[serviceCode] || 'STANDARD') as ServiceLevel;
 
-  // Extract delivery date if available
   let estimatedDeliveryDate: string | undefined;
   let transitDays: number | undefined;
 
   if (ratedShipment.TimeInTransit?.ServiceSummary?.EstimatedArrival?.Arrival) {
     const arrival = ratedShipment.TimeInTransit.ServiceSummary.EstimatedArrival.Arrival;
-    // Convert UPS date format (YYYYMMDD) to ISO
     const dateStr = arrival.Date;
+    // UPS returns dates in YYYYMMDD format
     if (dateStr && dateStr.length === 8) {
       const year = dateStr.substring(0, 4);
       const month = dateStr.substring(4, 6);

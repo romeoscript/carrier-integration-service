@@ -7,10 +7,6 @@ import {
 } from '../../domain/errors';
 import { ICarrier, ICarrierAuth } from './carrier.interface';
 
-/**
- * Abstract base class providing common functionality for all carriers
- * Handles HTTP client setup, error transformation, and retry logic
- */
 export abstract class BaseCarrier implements ICarrier {
   protected readonly httpClient: AxiosInstance;
 
@@ -29,14 +25,12 @@ export abstract class BaseCarrier implements ICarrier {
       },
     });
 
-    // Request interceptor to add auth token
     this.httpClient.interceptors.request.use(async (config) => {
       const token = await this.auth.getToken();
       config.headers.Authorization = `Bearer ${token}`;
       return config;
     });
 
-    // Response interceptor for error handling
     this.httpClient.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
@@ -45,11 +39,7 @@ export abstract class BaseCarrier implements ICarrier {
     );
   }
 
-  /**
-   * Transform axios errors into our domain errors
-   */
   protected transformError(error: AxiosError): Error {
-    // Network/timeout errors
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
       return new NetworkError('Request timeout', { originalError: error.message });
     }
@@ -62,7 +52,6 @@ export abstract class BaseCarrier implements ICarrier {
 
     const { status, data } = error.response;
 
-    // Rate limiting
     if (status === 429) {
       const retryAfter = error.response.headers['retry-after']
         ? parseInt(error.response.headers['retry-after'], 10)
@@ -70,24 +59,16 @@ export abstract class BaseCarrier implements ICarrier {
       return new RateLimitError('Rate limit exceeded', retryAfter);
     }
 
-    // Authentication errors
     if (status === 401 || status === 403) {
-      // Invalidate token on auth failure
-      this.auth.invalidateToken().catch(() => {
-        /* ignore */
-      });
+      // Force token refresh on next request - current token may have been revoked
+      this.auth.invalidateToken().catch(() => {});
       return new AuthenticationError('Authentication failed', data);
     }
 
-    // Other API errors
     const message = this.extractErrorMessage(data);
     return new CarrierAPIError(message, status, undefined, data);
   }
 
-  /**
-   * Extract error message from carrier response
-   * Override this in carrier-specific implementations if needed
-   */
   protected extractErrorMessage(data: unknown): string {
     if (typeof data === 'string') return data;
     if (data && typeof data === 'object') {
@@ -97,9 +78,6 @@ export abstract class BaseCarrier implements ICarrier {
     return 'Unknown error occurred';
   }
 
-  /**
-   * Abstract methods that must be implemented by carrier-specific classes
-   */
   abstract getRates(request: import('../../domain').RateRequest): Promise<import('../../domain').RateResponse>;
   abstract healthCheck(): Promise<boolean>;
 }

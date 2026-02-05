@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Address schema with validation
- */
 export const AddressSchema = z.object({
   street1: z.string().min(1, 'Street address is required'),
   street2: z.string().optional(),
@@ -15,9 +12,6 @@ export const AddressSchema = z.object({
 
 export type Address = z.infer<typeof AddressSchema>;
 
-/**
- * Validates an address object
- */
 export function validateAddress(address: unknown): Address {
   return AddressSchema.parse(address);
 }

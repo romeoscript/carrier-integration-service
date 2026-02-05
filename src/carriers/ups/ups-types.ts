@@ -1,11 +1,3 @@
-/**
- * UPS-specific type definitions based on UPS Rating API documentation
- * These represent the external API format that we'll transform to/from our domain models
- */
-
-/**
- * UPS Rate Request payload
- */
 export interface UPSRateRequest {
   RateRequest: {
     Request: {
@@ -39,9 +31,6 @@ export interface UPSRateRequest {
   };
 }
 
-/**
- * UPS Address format
- */
 export interface UPSAddress {
   AddressLine?: string[];
   City: string;
@@ -51,9 +40,6 @@ export interface UPSAddress {
   ResidentialAddressIndicator?: string;
 }
 
-/**
- * UPS Package format
- */
 export interface UPSPackage {
   PackagingType: {
     Code: string;
@@ -61,7 +47,7 @@ export interface UPSPackage {
   };
   Dimensions?: {
     UnitOfMeasurement: {
-      Code: string; // 'IN' or 'CM'
+      Code: string;
     };
     Length: string;
     Width: string;
@@ -69,7 +55,7 @@ export interface UPSPackage {
   };
   PackageWeight: {
     UnitOfMeasurement: {
-      Code: string; // 'LBS' or 'KGS'
+      Code: string;
     };
     Weight: string;
   };
@@ -81,9 +67,6 @@ export interface UPSPackage {
   };
 }
 
-/**
- * UPS Rate Response payload
- */
 export interface UPSRateResponse {
   RateResponse: {
     Response: {
@@ -99,9 +82,6 @@ export interface UPSRateResponse {
   };
 }
 
-/**
- * Individual rated shipment from UPS
- */
 export interface UPSRatedShipment {
   Service: {
     Code: string;
@@ -154,9 +134,6 @@ export interface UPSRatedShipment {
   };
 }
 
-/**
- * UPS Service Code mapping to our internal service levels
- */
 export const UPS_SERVICE_CODES: Record<string, string> = {
   '03': 'GROUND',
   '12': 'NEXT_DAY_AIR',
@@ -168,16 +145,13 @@ export const UPS_SERVICE_CODES: Record<string, string> = {
   '11': 'STANDARD',
 };
 
-/**
- * Reverse mapping: our service levels to UPS codes
- */
 export const SERVICE_LEVEL_TO_UPS_CODE: Record<string, string> = {
   GROUND: '03',
   NEXT_DAY_AIR: '01',
   NEXT_DAY_AIR_EARLY: '14',
   '2ND_DAY_AIR': '02',
   STANDARD: '11',
-  EXPRESS: '01', // Map to Next Day Air
-  EXPRESS_SAVER: '13', // Map to Next Day Air Saver
+  EXPRESS: '01',
+  EXPRESS_SAVER: '13',
   '3_DAY_SELECT': '12',
 };

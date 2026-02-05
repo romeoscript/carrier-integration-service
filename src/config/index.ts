@@ -2,12 +2,8 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import { ConfigurationError } from '../domain/errors';
 
-// Load environment variables
 dotenv.config();
 
-/**
- * Configuration schema with validation
- */
 const ConfigSchema = z.object({
   ups: z.object({
     clientId: z.string().min(1, 'UPS_CLIENT_ID is required'),
@@ -28,15 +24,12 @@ const ConfigSchema = z.object({
   }),
   rateLimit: z.object({
     maxRequests: z.number().int().positive().default(100),
-    windowMs: z.number().int().positive().default(60000), // 1 minute
+    windowMs: z.number().int().positive().default(60000),
   }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
 
-/**
- * Loads and validates configuration from environment variables
- */
 export function loadConfig(): Config {
   try {
     return ConfigSchema.parse({
@@ -72,7 +65,4 @@ export function loadConfig(): Config {
   }
 }
 
-/**
- * Global config instance
- */
 export const config = loadConfig();

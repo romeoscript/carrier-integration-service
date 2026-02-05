@@ -2,9 +2,6 @@ import { z } from 'zod';
 import { AddressSchema } from './address';
 import { PackageSchema } from './package';
 
-/**
- * Service level options
- */
 export const ServiceLevelSchema = z.enum([
   'GROUND',
   'EXPRESS',
@@ -18,48 +15,36 @@ export const ServiceLevelSchema = z.enum([
 
 export type ServiceLevel = z.infer<typeof ServiceLevelSchema>;
 
-/**
- * Rate request schema
- */
 export const RateRequestSchema = z.object({
   origin: AddressSchema,
   destination: AddressSchema,
   packages: z.array(PackageSchema).min(1, 'At least one package is required'),
-  serviceLevel: ServiceLevelSchema.optional(), // If not provided, return all available services
-  pickupDate: z.string().datetime().optional(), // ISO 8601 format
+  serviceLevel: ServiceLevelSchema.optional(),
+  pickupDate: z.string().datetime().optional(),
 });
 
 export type RateRequest = z.infer<typeof RateRequestSchema>;
 
-/**
- * Individual rate quote from a carrier
- */
 export const RateQuoteSchema = z.object({
-  carrier: z.string(), // e.g., 'UPS', 'FedEx'
+  carrier: z.string(),
   serviceLevel: ServiceLevelSchema,
-  serviceName: z.string(), // Human-readable name
+  serviceName: z.string(),
   totalCharge: z.number().nonnegative(),
   currency: z.string().length(3).default('USD'),
-  estimatedDeliveryDate: z.string().optional(), // ISO 8601 format
+  estimatedDeliveryDate: z.string().optional(),
   transitDays: z.number().int().nonnegative().optional(),
   guaranteedDelivery: z.boolean().optional(),
 });
 
 export type RateQuote = z.infer<typeof RateQuoteSchema>;
 
-/**
- * Response containing multiple rate quotes
- */
 export const RateResponseSchema = z.object({
   quotes: z.array(RateQuoteSchema),
-  requestId: z.string().optional(), // For tracking/debugging
+  requestId: z.string().optional(),
 });
 
 export type RateResponse = z.infer<typeof RateResponseSchema>;
 
-/**
- * Validates a rate request
- */
 export function validateRateRequest(request: unknown): RateRequest {
   return RateRequestSchema.parse(request);
 }

@@ -1,37 +1,21 @@
 import { ICarrier } from '../carriers/base';
 import { RateRequest, RateResponse, RateQuote } from '../domain';
 
-/**
- * Main service for interacting with shipping carriers
- * Provides a unified interface for fetching rates across multiple carriers
- */
 export class CarrierService {
   private carriers: Map<string, ICarrier> = new Map();
 
-  /**
-   * Register a carrier
-   */
   registerCarrier(carrier: ICarrier): void {
     this.carriers.set(carrier.name.toUpperCase(), carrier);
   }
 
-  /**
-   * Get a specific carrier by name
-   */
   getCarrier(name: string): ICarrier | undefined {
     return this.carriers.get(name.toUpperCase());
   }
 
-  /**
-   * Get all registered carriers
-   */
   getAvailableCarriers(): string[] {
     return Array.from(this.carriers.keys());
   }
 
-  /**
-   * Fetch rates from a specific carrier
-   */
   async getRates(carrierName: string, request: RateRequest): Promise<RateResponse> {
     const carrier = this.getCarrier(carrierName);
     if (!carrier) {
@@ -41,10 +25,6 @@ export class CarrierService {
     return carrier.getRates(request);
   }
 
-  /**
-   * Fetch rates from all registered carriers and combine results
-   * Useful for rate shopping across multiple carriers
-   */
   async getAllRates(request: RateRequest): Promise<RateResponse> {
     const carriers = Array.from(this.carriers.values());
 
@@ -52,12 +32,11 @@ export class CarrierService {
       throw new Error('No carriers registered');
     }
 
-    // Fetch rates from all carriers in parallel
+    // Fetch from all carriers in parallel - don't let one slow carrier block others
     const results = await Promise.allSettled(
       carriers.map((carrier) => carrier.getRates(request))
     );
 
-    // Combine successful results
     const allQuotes: RateQuote[] = [];
     const errors: Array<{ carrier: string; error: Error }> = [];
 
@@ -73,12 +52,11 @@ export class CarrierService {
       }
     });
 
-    // If all carriers failed, throw the first error
+    // Only throw if ALL carriers failed - partial results are still useful
     if (allQuotes.length === 0 && errors.length > 0) {
       throw errors[0].error;
     }
 
-    // Sort quotes by price (lowest first)
     allQuotes.sort((a, b) => a.totalCharge - b.totalCharge);
 
     return {
@@ -86,9 +64,6 @@ export class CarrierService {
     };
   }
 
-  /**
-   * Health check for all carriers
-   */
   async healthCheck(): Promise<Record<string, boolean>> {
     const carriers = Array.from(this.carriers.entries());
     const results = await Promise.allSettled(

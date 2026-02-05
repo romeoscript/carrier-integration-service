@@ -1,6 +1,3 @@
-/**
- * Base error class for carrier integration errors
- */
 export class CarrierError extends Error {
   constructor(
     message: string,
@@ -10,13 +7,11 @@ export class CarrierError extends Error {
   ) {
     super(message);
     this.name = 'CarrierError';
+    // Required for proper instanceof checks when targeting ES5
     Object.setPrototypeOf(this, CarrierError.prototype);
   }
 }
 
-/**
- * Authentication/authorization errors
- */
 export class AuthenticationError extends CarrierError {
   constructor(message: string, details?: unknown) {
     super(message, 'AUTHENTICATION_ERROR', 401, details);
@@ -25,9 +20,6 @@ export class AuthenticationError extends CarrierError {
   }
 }
 
-/**
- * Validation errors for request data
- */
 export class ValidationError extends CarrierError {
   constructor(message: string, details?: unknown) {
     super(message, 'VALIDATION_ERROR', 400, details);
@@ -36,9 +28,6 @@ export class ValidationError extends CarrierError {
   }
 }
 
-/**
- * Rate limiting errors
- */
 export class RateLimitError extends CarrierError {
   constructor(
     message: string = 'Rate limit exceeded',
@@ -50,9 +39,6 @@ export class RateLimitError extends CarrierError {
   }
 }
 
-/**
- * Network/timeout errors
- */
 export class NetworkError extends CarrierError {
   constructor(message: string, details?: unknown) {
     super(message, 'NETWORK_ERROR', 503, details);
@@ -61,9 +47,6 @@ export class NetworkError extends CarrierError {
   }
 }
 
-/**
- * Errors from carrier API responses
- */
 export class CarrierAPIError extends CarrierError {
   constructor(
     message: string,
@@ -77,9 +60,6 @@ export class CarrierAPIError extends CarrierError {
   }
 }
 
-/**
- * Configuration errors
- */
 export class ConfigurationError extends CarrierError {
   constructor(message: string, details?: unknown) {
     super(message, 'CONFIGURATION_ERROR', 500, details);
