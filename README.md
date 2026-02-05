@@ -309,6 +309,3 @@ To add a new carrier:
 
 MIT
 
-## Contact
-
-For questions or issues, contact: jack@cybership.io
