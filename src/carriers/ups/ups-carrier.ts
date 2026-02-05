@@ -1,8 +1,8 @@
 import { BaseCarrier } from '../base';
 import { RateRequest, RateResponse, validateRateRequest } from '../../domain';
 import { UPSAuth } from './ups-auth';
-import { UPSRateResponse } from './ups-types';
 import { mapRateRequestToUPS, mapUPSRatedShipmentToQuote } from './ups-mapper';
+import { validateRateResponse } from './ups-validator';
 
 export class UPSCarrier extends BaseCarrier {
   constructor(
@@ -13,16 +13,30 @@ export class UPSCarrier extends BaseCarrier {
     super('UPS', auth, baseURL);
   }
 
+  /**
+   * Fetch shipping rates from UPS
+   */
   async getRates(request: RateRequest): Promise<RateResponse> {
+    // Validate request before making API call
     const validatedRequest = validateRateRequest(request);
+
+    // Transform to UPS format
     const upsRequest = mapRateRequestToUPS(validatedRequest, this.accountNumber);
-    const response = await this.httpClient.post<UPSRateResponse>('/rating/v1/Rate', upsRequest);
-    const ratedShipments = response.data.RateResponse.RatedShipment;
+
+    // Make API call
+    // UPS Rating API endpoint: POST /api/rating/{version}/Rate
+    const response = await this.httpClient.post('/rating/v1/Rate', upsRequest);
+
+    // Validate response structure before processing
+    const validatedResponse = validateRateResponse(response.data);
+
+    // Transform response to our domain format
+    const ratedShipments = validatedResponse.RateResponse.RatedShipment;
     const quotes = ratedShipments.map(mapUPSRatedShipmentToQuote);
 
     return {
       quotes,
-      requestId: response.data.RateResponse.Response.TransactionReference?.CustomerContext,
+      requestId: validatedResponse.RateResponse.Response.TransactionReference?.CustomerContext,
     };
   }
 

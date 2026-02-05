@@ -1,13 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { ICarrierAuth } from '../base';
 import { AuthenticationError } from '../../domain/errors';
-
-interface UPSTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  issued_at: string;
-}
+import { validateTokenResponse } from './ups-validator';
 
 interface CachedToken {
   token: string;
@@ -64,7 +58,7 @@ export class UPSAuth implements ICarrierAuth {
     try {
       const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
 
-      const response = await this.httpClient.post<UPSTokenResponse>(
+      const response = await this.httpClient.post(
         this.oauthUrl,
         new URLSearchParams({
           grant_type: 'client_credentials',
@@ -77,14 +71,14 @@ export class UPSAuth implements ICarrierAuth {
         }
       );
 
-      const { access_token, expires_in } = response.data;
-      const expiresAt = Date.now() + expires_in * 1000 - this.EXPIRY_BUFFER_MS;
+      const { accessToken, expiresIn } = validateTokenResponse(response.data);
+      const expiresAt = Date.now() + expiresIn * 1000 - this.EXPIRY_BUFFER_MS;
       this.cachedToken = {
-        token: access_token,
+        token: accessToken,
         expiresAt,
       };
 
-      return access_token;
+      return accessToken;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const message =

@@ -1,12 +1,18 @@
-import { Address, Package, RateRequest, RateQuote, ServiceLevel } from '../../domain';
+import { Address, Package, RateRequest, RateQuote } from '../../domain';
 import {
   UPSRateRequest,
-  UPSRatedShipment,
   UPSAddress,
   UPSPackage,
-  UPS_SERVICE_CODES,
   SERVICE_LEVEL_TO_UPS_CODE,
 } from './ups-types';
+import { ValidatedUPSRatedShipment } from './ups-schemas';
+import { validateAndMapServiceLevel, validateRatedShipmentCharges } from './ups-validator';
+import {
+  extractMonetaryValue,
+  extractCurrency,
+  safeParseInt,
+  parseUPSDate,
+} from './ups-parser';
 
 export function mapAddressToUPS(address: Address): UPSAddress {
   const addressLines: string[] = [address.street1];
@@ -96,45 +102,72 @@ export function mapRateRequestToUPS(
   };
 }
 
-export function mapUPSRatedShipmentToQuote(ratedShipment: UPSRatedShipment): RateQuote {
-  // Prefer negotiated rates (account-specific discounts) over published rates
-  const totalCharge =
-    ratedShipment.NegotiatedRateCharges?.TotalCharge.MonetaryValue ||
-    ratedShipment.TotalCharges.MonetaryValue;
+/**
+ * Transform UPS RatedShipment to our domain RateQuote
+ * Now with proper validation and safe parsing
+ */
+export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipment): RateQuote {
+  // Validate that shipment has required charges
+  validateRatedShipmentCharges(ratedShipment);
 
-  const currency =
-    ratedShipment.NegotiatedRateCharges?.TotalCharge.CurrencyCode ||
-    ratedShipment.TotalCharges.CurrencyCode;
+  // Extract monetary values safely
+  const totalCharge = extractMonetaryValue(
+    ratedShipment.NegotiatedRateCharges,
+    ratedShipment.TotalCharges,
+    'totalCharge'
+  );
 
+  const currency = extractCurrency(
+    ratedShipment.NegotiatedRateCharges,
+    ratedShipment.TotalCharges
+  );
+
+  // Validate and map service code to our service level
   const serviceCode = ratedShipment.Service.Code;
-  const serviceLevel = (UPS_SERVICE_CODES[serviceCode] || 'STANDARD') as ServiceLevel;
+  const serviceLevel = validateAndMapServiceLevel(serviceCode);
 
+  // Extract delivery date if available
   let estimatedDeliveryDate: string | undefined;
   let transitDays: number | undefined;
 
-  if (ratedShipment.TimeInTransit?.ServiceSummary?.EstimatedArrival?.Arrival) {
-    const arrival = ratedShipment.TimeInTransit.ServiceSummary.EstimatedArrival.Arrival;
-    const dateStr = arrival.Date;
-    // UPS returns dates in YYYYMMDD format
-    if (dateStr && dateStr.length === 8) {
-      const year = dateStr.substring(0, 4);
-      const month = dateStr.substring(4, 6);
-      const day = dateStr.substring(6, 8);
-      estimatedDeliveryDate = `${year}-${month}-${day}`;
+  if (ratedShipment.TimeInTransit?.ServiceSummary?.EstimatedArrival?.Arrival?.Date) {
+    try {
+      estimatedDeliveryDate = parseUPSDate(
+        ratedShipment.TimeInTransit.ServiceSummary.EstimatedArrival.Arrival.Date,
+        'estimatedDeliveryDate'
+      );
+    } catch (error) {
+      // Date parsing is optional, log but don't fail
+      console.warn('Failed to parse delivery date:', error);
     }
   }
 
+  // Extract transit days safely
   if (ratedShipment.GuaranteedDelivery?.BusinessDaysInTransit) {
-    transitDays = parseInt(ratedShipment.GuaranteedDelivery.BusinessDaysInTransit, 10);
+    try {
+      transitDays = safeParseInt(
+        ratedShipment.GuaranteedDelivery.BusinessDaysInTransit,
+        'transitDays'
+      );
+    } catch (error) {
+      console.warn('Failed to parse guaranteed transit days:', error);
+    }
   } else if (ratedShipment.TimeInTransit?.ServiceSummary?.BusinessDaysInTransit) {
-    transitDays = parseInt(ratedShipment.TimeInTransit.ServiceSummary.BusinessDaysInTransit, 10);
+    try {
+      transitDays = safeParseInt(
+        ratedShipment.TimeInTransit.ServiceSummary.BusinessDaysInTransit,
+        'transitDays'
+      );
+    } catch (error) {
+      console.warn('Failed to parse transit days:', error);
+    }
   }
 
   return {
     carrier: 'UPS',
     serviceLevel,
     serviceName: ratedShipment.Service.Description || serviceLevel,
-    totalCharge: parseFloat(totalCharge),
+    totalCharge,
     currency,
     estimatedDeliveryDate,
     transitDays,
