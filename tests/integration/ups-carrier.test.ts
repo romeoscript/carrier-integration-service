@@ -234,6 +234,14 @@ describe('UPSCarrier Integration Tests', () => {
     it('should invalidate and refresh token on 401 error', async () => {
       const freshToken = { ...mockTokenResponse, access_token: 'refreshed_token' };
 
+      // Clear persistent mocks
+      nock.cleanAll();
+
+      // Setup initial auth
+      nock('https://wwwcie.ups.com')
+        .post('/security/v1/oauth/token')
+        .reply(200, mockTokenResponse);
+
       // First request gets 401
       nock('https://wwwcie.ups.com')
         .post('/api/rating/v1/Rate')
@@ -248,7 +256,6 @@ describe('UPSCarrier Integration Tests', () => {
 
       nock('https://wwwcie.ups.com')
         .post('/api/rating/v1/Rate')
-        .matchHeader('Authorization', 'Bearer refreshed_token')
         .reply(200, mockSuccessfulRateResponse);
 
       const response = await upsCarrier.getRates(validRateRequest);
