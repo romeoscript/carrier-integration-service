@@ -6,7 +6,7 @@ import {
   SERVICE_LEVEL_TO_UPS_CODE,
 } from './ups-types';
 import { ValidatedUPSRatedShipment } from './ups-schemas';
-import { validateAndMapServiceLevel, validateRatedShipmentCharges } from './ups-validator';
+import { validateAndMapServiceLevel } from './ups-validator';
 import {
   extractMonetaryValue,
   extractCurrency,
@@ -102,15 +102,15 @@ export function mapRateRequestToUPS(
   };
 }
 
-/**
- * Transform UPS RatedShipment to our domain RateQuote
- * Now with proper validation and safe parsing
- */
-export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipment): RateQuote {
-  // Validate that shipment has required charges
-  validateRatedShipmentCharges(ratedShipment);
+function tryOptional<T>(fn: () => T): T | undefined {
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
 
-  // Extract monetary values safely
+export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipment): RateQuote {
   const totalCharge = extractMonetaryValue(
     ratedShipment.NegotiatedRateCharges,
     ratedShipment.TotalCharges,
@@ -121,56 +121,20 @@ export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipm
     ratedShipment.NegotiatedRateCharges,
     ratedShipment.TotalCharges
   );
+  const serviceLevel = validateAndMapServiceLevel(ratedShipment.Service.Code);
 
-  // Validate and map service code to our service level
-  const serviceCode = ratedShipment.Service.Code;
-  const serviceLevel = validateAndMapServiceLevel(serviceCode);
+  const dateStr = ratedShipment.TimeInTransit?.ServiceSummary?.EstimatedArrival?.Arrival?.Date;
+  const estimatedDeliveryDate = dateStr
+    ? tryOptional(() => parseUPSDate(dateStr, 'estimatedDeliveryDate'))
+    : undefined;
 
-  // Extract delivery date if available
-  let estimatedDeliveryDate: string | undefined;
-  let transitDays: number | undefined;
-
-  if (ratedShipment.TimeInTransit?.ServiceSummary?.EstimatedArrival?.Arrival?.Date) {
-    try {
-      estimatedDeliveryDate = parseUPSDate(
-        ratedShipment.TimeInTransit.ServiceSummary.EstimatedArrival.Arrival.Date,
-        'estimatedDeliveryDate'
-      );
-    } catch (error) {
-      // Date parsing is optional, log but don't fail
-      console.warn(
-        'Failed to parse delivery date:',
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-  }
-
-  // Extract transit days safely
-  if (ratedShipment.GuaranteedDelivery?.BusinessDaysInTransit) {
-    try {
-      transitDays = safeParseInt(
-        ratedShipment.GuaranteedDelivery.BusinessDaysInTransit,
-        'transitDays'
-      );
-    } catch (error) {
-      console.warn(
-        'Failed to parse guaranteed transit days:',
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-  } else if (ratedShipment.TimeInTransit?.ServiceSummary?.BusinessDaysInTransit) {
-    try {
-      transitDays = safeParseInt(
-        ratedShipment.TimeInTransit.ServiceSummary.BusinessDaysInTransit,
-        'transitDays'
-      );
-    } catch (error) {
-      console.warn(
-        'Failed to parse transit days:',
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-  }
+  const guaranteedDays = ratedShipment.GuaranteedDelivery?.BusinessDaysInTransit;
+  const summaryDays = ratedShipment.TimeInTransit?.ServiceSummary?.BusinessDaysInTransit;
+  const transitDays = guaranteedDays
+    ? tryOptional(() => safeParseInt(guaranteedDays, 'transitDays'))
+    : summaryDays
+      ? tryOptional(() => safeParseInt(summaryDays, 'transitDays'))
+      : undefined;
 
   return {
     carrier: 'UPS',

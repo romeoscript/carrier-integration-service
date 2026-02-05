@@ -53,9 +53,9 @@ export abstract class BaseCarrier implements ICarrier {
     const { status, data } = error.response;
 
     if (status === 429) {
-      const retryAfter = error.response.headers['retry-after']
-        ? parseInt(error.response.headers['retry-after'], 10)
-        : undefined;
+      const raw = error.response.headers['retry-after'];
+      const n = typeof raw === 'string' ? parseInt(raw, 10) : NaN;
+      const retryAfter = Number.isInteger(n) && n >= 0 ? n : undefined;
       return new RateLimitError('Rate limit exceeded', retryAfter);
     }
 
@@ -71,9 +71,13 @@ export abstract class BaseCarrier implements ICarrier {
 
   protected extractErrorMessage(data: unknown): string {
     if (typeof data === 'string') return data;
-    if (data && typeof data === 'object') {
+    if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
       const obj = data as Record<string, unknown>;
-      return (obj.message || obj.error || obj.errorDescription || 'Unknown error') as string;
+      const msg =
+        (typeof obj.message === 'string' ? obj.message : undefined) ??
+        (typeof obj.error === 'string' ? obj.error : undefined) ??
+        (typeof obj.errorDescription === 'string' ? obj.errorDescription : undefined);
+      if (msg !== undefined) return msg;
     }
     return 'Unknown error occurred';
   }

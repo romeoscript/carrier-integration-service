@@ -23,8 +23,8 @@ const ConfigSchema = z.object({
     logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   }),
   rateLimit: z.object({
-    maxRequests: z.number().int().positive().default(100),
-    windowMs: z.number().int().positive().default(60000),
+    maxRequests: z.coerce.number().int().positive().default(100),
+    windowMs: z.coerce.number().int().positive().default(60000),
   }),
 });
 
@@ -45,12 +45,8 @@ export function loadConfig(): Config {
         logLevel: process.env.LOG_LEVEL,
       },
       rateLimit: {
-        maxRequests: process.env.RATE_LIMIT_MAX_REQUESTS
-          ? parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10)
-          : undefined,
-        windowMs: process.env.RATE_LIMIT_WINDOW_MS
-          ? parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10)
-          : undefined,
+        maxRequests: process.env.RATE_LIMIT_MAX_REQUESTS,
+        windowMs: process.env.RATE_LIMIT_WINDOW_MS,
       },
     });
   } catch (error) {
