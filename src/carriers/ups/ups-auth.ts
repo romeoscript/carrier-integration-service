@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { ICarrierAuth } from '../base';
-import { AuthenticationError } from '../../domain/errors';
+import { AuthenticationError, ValidationError } from '../../domain/errors';
 import { validateTokenResponse } from './ups-validator';
 
 interface CachedToken {
@@ -80,6 +80,9 @@ export class UPSAuth implements ICarrierAuth {
 
       return accessToken;
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       if (axios.isAxiosError(error)) {
         const message =
           error.response?.data?.error_description || 'Failed to obtain OAuth token';

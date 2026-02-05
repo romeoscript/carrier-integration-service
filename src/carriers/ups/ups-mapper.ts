@@ -138,7 +138,10 @@ export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipm
       );
     } catch (error) {
       // Date parsing is optional, log but don't fail
-      console.warn('Failed to parse delivery date:', error);
+      console.warn(
+        'Failed to parse delivery date:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -150,7 +153,10 @@ export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipm
         'transitDays'
       );
     } catch (error) {
-      console.warn('Failed to parse guaranteed transit days:', error);
+      console.warn(
+        'Failed to parse guaranteed transit days:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   } else if (ratedShipment.TimeInTransit?.ServiceSummary?.BusinessDaysInTransit) {
     try {
@@ -159,7 +165,10 @@ export function mapUPSRatedShipmentToQuote(ratedShipment: ValidatedUPSRatedShipm
         'transitDays'
       );
     } catch (error) {
-      console.warn('Failed to parse transit days:', error);
+      console.warn(
+        'Failed to parse transit days:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 

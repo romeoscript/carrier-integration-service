@@ -45,7 +45,7 @@ const UPSServiceSchema = z.object({
  * Schema for guaranteed delivery info
  */
 const GuaranteedDeliverySchema = z.object({
-  BusinessDaysInTransit: z.string().regex(/^\d+$/, 'BusinessDaysInTransit must be numeric string'),
+  BusinessDaysInTransit: z.string().optional(),
 });
 
 /**
@@ -58,11 +58,11 @@ const TimeInTransitSchema = z.object({
     }),
     EstimatedArrival: z.object({
       Arrival: z.object({
-        Date: z.string().regex(/^\d{8}$/, 'Date must be YYYYMMDD format'),
-        Time: z.string(),
+        Date: z.string().optional(),
+        Time: z.string().optional(),
       }),
     }).optional(),
-    BusinessDaysInTransit: z.string().regex(/^\d+$/, 'BusinessDaysInTransit must be numeric string').optional(),
+    BusinessDaysInTransit: z.string().optional(),
   }),
 });
 
@@ -85,7 +85,7 @@ const UPSRatedShipmentSchema = z.object({
   ServiceOptionsCharges: MonetaryValueSchema.optional(),
   TotalCharges: MonetaryValueSchema,
   NegotiatedRateCharges: z.object({
-    TotalCharge: MonetaryValueSchema,
+    TotalCharge: MonetaryValueSchema.optional(),
   }).optional(),
   GuaranteedDelivery: GuaranteedDeliverySchema.optional(),
   TimeInTransit: TimeInTransitSchema.optional(),
